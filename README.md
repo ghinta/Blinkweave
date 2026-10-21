@@ -238,7 +238,7 @@ rojo build default.project.json --output build/blinkweave.rbxlx
 
 The step 6 commands are runnable now, plus `scripts/typecheck.sh` (strict Luau against the Roblox API via luau-lsp) and `lune run scripts/levels.luau` (prints every floor's board, par and solution). `scripts/install-tools.sh` installs the `rokit.toml` versions without Rokit; CI uses it.
 
-**Run in Studio:** (step-by-step guide for first-time setup, in German: [`docs/ANLEITUNG-TESTEN.md`](docs/ANLEITUNG-TESTEN.md))
+**Run in Studio:** (beginner step-by-step guide from installing the tools to the full test checklist: [`docs/TESTING.md`](docs/TESTING.md))
 
 1. `rojo serve`, connect the Rojo plugin, then press Play. Everything (lobby, chambers, HUD) is built by scripts at runtime.
 2. Optional: *Game Settings → Security → Enable Studio Access to API Services* to test DataStore saving. Without it the game runs with in-memory progress and the lobby shows a "can't be saved" notice.
