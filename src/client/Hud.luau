@@ -143,7 +143,7 @@ local function buildStatus()
 	})
 	tipLabel = Ui.label({
 		LayoutOrder = 4,
-		Size = UDim2.new(1, 0, 0, 0),
+		Size = UDim2.fromScale(1, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		TextSize = 16,
 		TextColor3 = Theme.colors.muted,
@@ -311,7 +311,7 @@ local function buildLobby()
 	})
 	Ui.label({
 		LayoutOrder = 2,
-		Size = UDim2.new(1, 0, 0, 0),
+		Size = UDim2.fromScale(1, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		Text = Strings.get("subtitle") .. "\n" .. Strings.get("howTo"),
 		TextSize = 16,
@@ -322,7 +322,7 @@ local function buildLobby()
 
 	floorsFrame = Ui.new("Frame", {
 		LayoutOrder = 3,
-		Size = UDim2.new(1, 0, 0, 0),
+		Size = UDim2.fromScale(1, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
 		Parent = lobbyPanel,
@@ -350,10 +350,10 @@ local function buildLobby()
 		BackgroundTransparency = 1,
 		Parent = lobbyPanel,
 	}, { Ui.list(Enum.FillDirection.Horizontal, 8, Enum.HorizontalAlignment.Center) })
-	soundButton = Ui.button({ Size = UDim2.new(0.38, 0, 1, 0), TextSize = 15, Parent = settingsRow })
-	jumpButton = Ui.button({ Size = UDim2.new(0.38, 0, 1, 0), TextSize = 15, Parent = settingsRow })
+	soundButton = Ui.button({ Size = UDim2.fromScale(0.38, 1), TextSize = 15, Parent = settingsRow })
+	jumpButton = Ui.button({ Size = UDim2.fromScale(0.38, 1), TextSize = 15, Parent = settingsRow })
 	local hideButton = Ui.button({
-		Size = UDim2.new(0.2, 0, 1, 0),
+		Size = UDim2.fromScale(0.2, 1),
 		Text = Strings.get("hideFloors"),
 		TextSize = 15,
 		Parent = settingsRow,
