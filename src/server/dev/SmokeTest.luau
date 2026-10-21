@@ -22,8 +22,8 @@ type Entry = LevelLibrary.Entry
 
 local SmokeTest = {}
 
--- Fake owners use negative keys so they never collide with real UserIds.
-local OWNERS = { -1, -2 }
+-- Fake owners never collide with real UserIds or with Studio test players (-1, -2, ...).
+local OWNERS = { -9001, -9002 }
 -- Slots far away from real players.
 local FIRST_SLOT = 90
 
