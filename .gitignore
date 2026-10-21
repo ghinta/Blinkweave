@@ -1,0 +1,20 @@
+# Build output
+/build/
+*.rbxl
+*.rbxlx
+*.rbxl.lock
+*.rbxlx.lock
+
+# Generated tooling files
+sourcemap.json
+/.cache/
+roblox.yml
+globalTypes.d.luau
+
+# Editors / OS
+.vscode/settings.json
+.DS_Store
+Thumbs.db
+
+# Tools installed by scripts/install-tools.sh
+/.tools/
