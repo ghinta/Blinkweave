@@ -3,7 +3,7 @@
 > **A pocket-sized light-switch puzzle tower for Roblox.** Flip one tile, change its neighbors, solve the pattern, climb the tower.
 
 **Project:** Roblox experience / single repository  
-**Status:** Pre-production specification — README only; game code is not implemented yet.  
+**Status:** MVP implemented in code (10 floors, server-authoritative sessions, persistence, HUD). Format, lint, strict type check, headless tests and Rojo build pass; a Roblox Studio playtest is still pending before publishing.  
 **Working title:** `Blinkweave` (preliminary web name screening only; **not** legally trademark-cleared).  
 **Inspiration:** The general *Lights Out* toggle-neighbor puzzle concept; **no** copied art, levels, branding, sounds, or source code.
 
@@ -45,14 +45,25 @@
 
 ### MVP deliverables
 
-- [ ] 3D lobby + 10 floors: 3 tutorial, 4 standard, 3 advanced.
-- [ ] Single-player independent puzzle sessions within a shared Roblox server.
-- [ ] Tap/click input, tile animations, audio cue, undo, restart, hint, floor exit.
-- [ ] Deterministic seed-based boards and solver-validated level data.
-- [ ] Saved highest unlocked floor, stars, and personal best per level.
-- [ ] Responsive UI: safe areas, scalable fonts, clear tile states, keyboard + touch.
-- [ ] Analytics: tutorial start/finish, floor start/finish, resets, hints, exits.
-- [ ] Automated rule/solver tests and Roblox Studio smoke tests.
+Ticked = implemented and covered by the headless checks. Nothing has been playtested in Roblox Studio yet.
+
+- [x] 3D lobby + 10 floors: 3 tutorial, 4 standard, 3 advanced (geometry built from code, no assets).
+- [x] Single-player independent puzzle sessions within a shared Roblox server.
+- [x] Tap/click input, jump-landing input, tile animations, audio cue, undo, restart, hint, floor exit.
+- [x] Deterministic seed-based boards and solver-validated level data.
+- [x] Saved highest unlocked floor, stars, and personal best per level.
+- [x] Responsive UI: safe areas, scalable fonts, clear tile states, keyboard + touch + gamepad.
+- [x] Analytics: tutorial start/finish, floor start/finish, resets, hints, exits.
+- [x] Automated rule/solver tests; Roblox Studio smoke test written (`src/server/dev/SmokeTest.luau`), not yet run in Studio.
+
+### How to play (MVP)
+
+- Tap or click one of your tiles, use the board panel in the HUD, or **jump and land** on a tile: it flips itself and its N/E/S/W neighbours.
+- Turn every light off. The door opens; walk onto the exit pad (or press **Next floor**) to climb one floor.
+- Shortcuts: `Z` undo, `R` restart, `H` hint, `N` next floor; gamepad `X` undo, `Y` hint. Every action also has an on-screen button.
+- Stars: 3 = par moves without hints, 2 = up to `max(2, ceil(par/2))` extra moves and at most one hint, otherwise 1. Time is recorded as a personal best only.
+- Tutorial floors reset for free; elsewhere a restart keeps the move counter. Floor 10 has undo disabled.
+- Lobby settings: sound on/off and "jump flips tiles" on/off (saved with your progress).
 
 ### Out of scope until player validation
 
@@ -68,14 +79,16 @@ export type Level = {
     id: string,
     width: number,
     height: number,
-    rule: "cross" | "diagonal" | "row",
+    rule: "cross", -- "diagonal" | "row" later, each with its own tutorial
     seed: number,
     target: "allOff",
-    parMoves: number?,
+    scrambleMoves: number, -- distinct seeded presses applied to the all-off board
+    parMoves: number?, -- computed by the solver, never authored
     allowUndo: boolean,
+    tutorial: boolean,
 }
 
--- Example metadata; actual board is generated and validated server-side.
+-- Example from src/server/levels/Catalog.luau; the board is generated and validated server-side.
 local intro01: Level = {
     id = "floor_001",
     width = 3,
@@ -83,10 +96,10 @@ local intro01: Level = {
     rule = "cross",
     seed = 10427,
     target = "allOff",
-    parMoves = nil, -- computed by solver, not guessed
+    scrambleMoves = 1,
     allowUndo = true,
+    tutorial = true,
 }
-return intro01
 ```
 
 Define a **pure Luau** function `toggle(state, index, rule) -> newState`; never make Roblox `Part` instances the source of truth. A board revision increases after every server-accepted action. Server messages include `{sessionId, revision, cells, moves, solved}`. Use an action request such as `{sessionId, expectedRevision, cellIndex}`, not a client-supplied board state.
@@ -149,27 +162,32 @@ C4Component
 
 C4 containers here mean runtime **responsibilities**, not Docker containers or independently deployed services. No custom backend, Kubernetes cluster, or database server is required.
 
-## 5. Repository structure (target)
+## 5. Repository structure
 
 ```text
 blinkweave/
 ├── README.md
-├── AGENTS.md                 # Codex instructions and acceptance criteria
-├── rokit.toml                # pinned tools; create during bootstrap
+├── AGENTS.md                 # agent instructions and acceptance criteria
+├── rokit.toml                # pinned tools
 ├── default.project.json      # Rojo mapping
-├── selene.toml
-├── .stylua.toml
-├── .luaurc
+├── selene.toml / .stylua.toml / .luaurc
 ├── src/
-│   ├── shared/              # typed requests, events and level types
-│   ├── client/              # BoardController, InputController, HUD, VFX
-│   └── server/              # ActionGateway, SessionManager, ProgressionService
-│       ├── logic/           # ToggleEngine, GF2Solver, PuzzleGenerator
-│       └── levels/          # data-only definitions
-├── tests/                   # pure logic + server integration tests
-├── scripts/                 # Lune test runner
-└── .gitlab-ci.yml           # checks and Rojo build (to implement)
+│   ├── shared/              # Types (requests, snapshots, level type), Protocol (remotes, tags)
+│   ├── client/              # Net, Hud, BoardController, InputController, Audio, Strings (de/en)
+│   └── server/
+│       ├── Main.server.luau # entry point
+│       ├── logic/           # ToggleEngine, GF2Solver, PuzzleGenerator, Prng, LevelCodec, Scoring, LevelLibrary
+│       ├── levels/          # Catalog.luau, data-only floor definitions
+│       ├── services/        # GameService, ActionGateway, SessionManager, RequestValidator, RateLimiter,
+│       │                    # ProgressionService, ProgressModel, ProgressStore, Analytics
+│       ├── world/           # LobbyBuilder, ChamberBuilder, Layout, Parts
+│       └── dev/             # Studio smoke test
+├── tests/                   # Lune specs: rules, solver, generator, levels, sessions, gateway, progress, world
+├── scripts/                 # test runner + loader, level dump, tool installer, type check
+└── .github/workflows/ci.yml # format, lint, type check, tests, Rojo build
 ```
+
+The repository is hosted on GitHub, so CI uses GitHub Actions instead of the originally planned GitLab CI.
 
 ## 6. Tools and setup
 
@@ -187,7 +205,8 @@ blinkweave/
 | Selene | 0.32.0 | Lint |
 | StyLua | 2.6.0 | Formatting |
 | Wally | 0.3.2, optional | Third-party Luau packages; avoid unless needed |
-| Git + GitLab CI | Existing installation | Source control and quality gates |
+| Git + GitHub Actions | Existing installation | Source control and quality gates |
+| luau-lsp | 1.70.1 | Strict type check against the Roblox API (`scripts/typecheck.sh`) |
 
 **Bootstrap a new, empty repository:**
 
@@ -217,7 +236,15 @@ lune run scripts/test.luau
 rojo build default.project.json --output build/blinkweave.rbxlx
 ```
 
-The commands under step 6 are **future acceptance commands**, not runnable from this README-only starter. The Codex bootstrap task below must create the referenced files first.
+The step 6 commands are runnable now, plus `scripts/typecheck.sh` (strict Luau against the Roblox API via luau-lsp) and `lune run scripts/levels.luau` (prints every floor's board, par and solution). `scripts/install-tools.sh` installs the `rokit.toml` versions without Rokit; CI uses it.
+
+**Run in Studio:** (beginner step-by-step guide from installing the tools to the full test checklist: [`docs/TESTING.md`](docs/TESTING.md))
+
+1. `rojo serve`, connect the Rojo plugin, then press Play. Everything (lobby, chambers, HUD) is built by scripts at runtime.
+2. Optional: *Game Settings → Security → Enable Studio Access to API Services* to test DataStore saving. Without it the game runs with in-memory progress and the lobby shows a "can't be saved" notice.
+3. Smoke test: set the boolean attribute `BlinkweaveSmokeTest = true` on `ServerScriptService` and press Play; the Output shows `[Blinkweave SmokeTest] PASS` or the failures.
+4. Two players: *Test → Clients and Servers → 2 players*; each gets an own chamber column.
+5. Audio uses sounds bundled with the Roblox client (`rbxasset://sounds/...`); replace them with original sounds before launch.
 
 ## 7. Security, persistence, analytics
 
@@ -231,16 +258,19 @@ The commands under step 6 are **future acceptance commands**, not runnable from 
 
 ## 8. Test plan / definition of done
 
-- [ ] Every toggle obeys self + valid orthogonal-neighbor rule; pressing the same cell twice restores the board.
-- [ ] Generator creates ≥1,000 solvable puzzles across supported sizes and seeds.
-- [ ] Solver reconstructs a solution; any displayed “minimum moves” claim is proven for that board.
-- [ ] Out-of-bounds, duplicate, stale, and rapid-fire remote actions are rejected safely.
-- [ ] Two concurrent players have independent boards and saved progress.
-- [ ] Save/load survives reconnect; failed data-store requests do not break gameplay.
-- [ ] Playable without keyboard or voice chat; test phone portrait/landscape and desktop.
-- [ ] Rojo build, formatting, lint, and pure-rule test suite pass in CI.
+- [x] Every toggle obeys self + valid orthogonal-neighbor rule; pressing the same cell twice restores the board. (`tests/ToggleEngine.spec.luau`)
+- [x] Generator creates ≥1,000 solvable puzzles across supported sizes and seeds. (`tests/PuzzleGenerator.spec.luau`)
+- [x] Solver reconstructs a solution; any displayed “minimum moves” claim is proven for that board. (null-space enumeration; cross-checked by brute force on all 3×3 and sampled 4×4 boards)
+- [x] Out-of-bounds, duplicate, stale, and rapid-fire remote actions are rejected safely. (`tests/SessionManager.spec.luau`, `tests/Gateway.spec.luau`)
+- [x] Two concurrent players have independent boards and saved progress. (session tests; one DataStore key per player)
+- [x] Save/load survives reconnect; failed data-store requests do not break gameplay. (`tests/Progress.spec.luau` with a failing fake store)
+- [ ] Playable without keyboard or voice chat; test phone portrait/landscape and desktop. (needs Studio device emulation)
+- [x] Rojo build, formatting, lint, strict type check and test suite pass in CI.
+- [ ] Studio smoke test and 2-client local server test. (needs Studio)
 
 ## 9. Implementation sequence for Codex
+
+Phases 1–6 are implemented; phase 7 is done in code (10 floors) but the accessibility pass and 2-client smoke test still need Studio.
 
 1. Scaffold Rojo project, strict Luau configuration, lint/format, headless tests, GitLab CI and `AGENTS.md`.
 2. Implement and unit-test `ToggleEngine` and level serializers.
